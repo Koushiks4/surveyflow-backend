@@ -165,7 +165,7 @@ export class ProjectService {
     }
   }
 
-  async uploadDocument(organizationId, projectId, userId, file) {
+  async uploadDocument(organizationId, projectId, userId, file, category) {
     const fileName = `${Date.now()}-${file.filename}`;
     const filePath = `${organizationId}/projects/${projectId}/${fileName}`;
 
@@ -186,6 +186,7 @@ export class ProjectService {
         file_size: buffer.length,
         file_type: file.mimetype,
         uploaded_by: userId,
+        category: category || 'other',
       })
       .select()
       .single();

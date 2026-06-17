@@ -12,6 +12,9 @@ import configRoutes from './routes/config/index.js';
 import clientRoutes from './routes/clients/index.js';
 import projectRoutes from './routes/projects/index.js';
 import dashboardRoutes from './routes/dashboard/index.js';
+import attendanceRoutes from './routes/attendance/index.js';
+import taskRoutes from './routes/tasks/index.js';
+import noteRoutes from './routes/notes/index.js';
 
 export async function buildApp(opts = {}) {
   const app = Fastify({ logger: opts.logger ?? true, ...opts });
@@ -42,6 +45,9 @@ export async function buildApp(opts = {}) {
     await app.register(clientRoutes, { prefix: '/clients' });
     await app.register(projectRoutes, { prefix: '/projects' });
     await app.register(dashboardRoutes, { prefix: '/dashboard' });
+    await app.register(attendanceRoutes, { prefix: '/attendance' });
+    await app.register(taskRoutes, { prefix: '/tasks' });
+    await app.register(noteRoutes, { prefix: '/notes' });
   }, { prefix: '/api' });
 
   return app;

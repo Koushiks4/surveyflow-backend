@@ -6,7 +6,9 @@
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "seed": "node scripts/seed.js",
+    "seed:clean": "node scripts/seed.js --clean"
   },
   "dependencies": {
     "@fastify/cors": "^11.2.0",
@@ -20,7 +22,7 @@
     "vitest": "^4.1.9"
   },
   "description": "",
-  "main": "vitest.config.js",
+  "main": "src/server.js",
   "keywords": [],
   "author": "",
   "license": "ISC"

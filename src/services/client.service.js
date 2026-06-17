@@ -84,7 +84,7 @@ export class ClientService {
     return data;
   }
 
-  async uploadDocument(organizationId, clientId, userId, file) {
+  async uploadDocument(organizationId, clientId, userId, file, category) {
     const fileName = `${Date.now()}-${file.filename}`;
     const filePath = `${organizationId}/clients/${clientId}/${fileName}`;
 
@@ -105,6 +105,7 @@ export class ClientService {
         file_size: buffer.length,
         file_type: file.mimetype,
         uploaded_by: userId,
+        category: category || 'other',
       })
       .select()
       .single();

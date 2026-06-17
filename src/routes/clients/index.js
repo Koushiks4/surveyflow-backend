@@ -38,13 +38,15 @@ export default async function clientRoutes(fastify) {
   fastify.post('/:id/documents', {
     preHandler: [fastify.authorize(canCreate)],
   }, async (request, reply) => {
-    const file = await request.file();
-    if (!file) throw new AppError(400, 'No file uploaded');
+    const data = await request.file();
+    if (!data) throw new AppError(400, 'No file uploaded');
+    const category = data.fields?.category?.value || 'other';
     const doc = await clientService.uploadDocument(
       request.organizationId,
       request.params.id,
       request.user.id,
-      file
+      data,
+      category
     );
     return reply.status(201).send(doc);
   });
