@@ -71,4 +71,11 @@ export default async function projectRoutes(fastify) {
     );
     return reply.status(201).send(doc);
   });
+
+  fastify.delete('/documents/:documentId', {
+    preHandler: [fastify.authorize(canManage)],
+  }, async (request, reply) => {
+    await projectService.deleteDocument(request.params.documentId, request.organizationId);
+    return reply.status(204).send();
+  });
 }

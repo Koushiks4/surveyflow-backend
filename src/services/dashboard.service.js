@@ -83,6 +83,63 @@ export class DashboardService {
     return breakdown;
   }
 
+  async getDeliveryTracker(organizationId) {
+    const { data: projects } = await supabaseAdmin
+      .from('projects')
+      .select(`
+        id, project_number, title, delivery_confirmed_at,
+        client:clients (name),
+        status:project_statuses (name, color)
+      `)
+      .eq('organization_id', organizationId)
+      .order('created_at', { ascending: false });
+
+    if (!projects) return { pending: [], delivered: [], closed: [] };
+
+    const results = [];
+    for (const project of projects) {
+      const statusName = project.status?.name?.toLowerCase() || '';
+      if (statusName === 'closed') continue;
+
+      const { data: deliverables } = await supabaseAdmin
+        .from('project_deliverables')
+        .select('id', { count: 'exact', head: true })
+        .eq('project_id', project.id);
+
+      const { data: checklistItems } = await supabaseAdmin
+        .from('closure_checklist_items')
+        .select('id')
+        .eq('organization_id', organizationId)
+        .eq('is_active', true);
+
+      const { data: checks } = await supabaseAdmin
+        .from('project_closure_checks')
+        .select('id')
+        .eq('project_id', project.id)
+        .eq('checked', true);
+
+      const totalChecklist = checklistItems?.length || 0;
+      const completedChecklist = checks?.length || 0;
+
+      results.push({
+        id: project.id,
+        project_number: project.project_number,
+        title: project.title,
+        client_name: project.client?.name,
+        status: project.status,
+        deliverables_count: deliverables || 0,
+        checklist_total: totalChecklist,
+        checklist_completed: completedChecklist,
+        delivery_confirmed: !!project.delivery_confirmed_at,
+      });
+    }
+
+    const pending = results.filter(p => !p.delivery_confirmed && p.status?.name !== 'Delivered');
+    const delivered = results.filter(p => p.delivery_confirmed || p.status?.name === 'Delivered');
+
+    return { pending, delivered };
+  }
+
   async getRecentProjects(organizationId, userId, roles, limit = 10) {
     const isAdmin = roles.some(r => ['super_admin', 'admin'].includes(r));
 

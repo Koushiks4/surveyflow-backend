@@ -24,6 +24,12 @@ const TEST_PASSWORD = 'Test@1234';
 
 async function clean() {
   console.log('🧹 Cleaning existing data...');
+  await supabase.from('project_closure_checks').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  await supabase.from('project_deliverables').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  await supabase.from('closure_checklist_items').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  await supabase.from('payment_entries').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  await supabase.from('project_quotes').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  await supabase.from('task_files').delete().neq('id', '00000000-0000-0000-0000-000000000000');
   await supabase.from('project_notes').delete().neq('id', '00000000-0000-0000-0000-000000000000');
   await supabase.from('project_tasks').delete().neq('id', '00000000-0000-0000-0000-000000000000');
   await supabase.from('attendance_logs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
@@ -117,6 +123,8 @@ async function seed() {
     { name: 'In Progress', color: '#3B82F6', display_order: 1 },
     { name: 'Completed', color: '#10B981', display_order: 2 },
     { name: 'On Hold', color: '#6B7280', display_order: 3 },
+    { name: 'Delivered', color: '#8B5CF6', display_order: 4 },
+    { name: 'Closed', color: '#64748B', display_order: 5 },
   ];
   const { data: projectStatuses } = await supabase
     .from('project_statuses')
@@ -283,6 +291,69 @@ async function seed() {
   }
   console.log(`   ✓ ${attendanceDefs.length} attendance logs`);
 
+  // 14. Project Quotes
+  console.log('  Creating payment data...');
+  const quoteDefs = [
+    { project: projects[0], amount: 250000 },
+    { project: projects[1], amount: 500000 },
+    { project: projects[3], amount: 150000 },
+  ];
+
+  for (const q of quoteDefs) {
+    await supabase.from('project_quotes').insert({
+      organization_id: org.id,
+      project_id: q.project.id,
+      quoted_amount: q.amount,
+      updated_by: users['rajesh@sathyananda.com'],
+    });
+  }
+  console.log(`   ✓ ${quoteDefs.length} project quotes`);
+
+  // 15. Payment Entries
+  const paymentDefs = [
+    { project: projects[0], type: 'advance', amount: 100000, method: 'bank_transfer', date: '2026-06-01', desc: 'Initial advance payment' },
+    { project: projects[0], type: 'expense', amount: 15000, category: 'Survey Cost', method: 'cash', date: '2026-06-03', desc: 'Equipment rental for total station' },
+    { project: projects[0], type: 'expense', amount: 5000, category: 'Travel', method: 'upi', date: '2026-06-05', desc: 'Travel to site and back' },
+    { project: projects[0], type: 'expense', amount: 8000, category: 'Staff Cost', method: 'bank_transfer', date: '2026-06-10', desc: 'Field assistant wages' },
+    { project: projects[1], type: 'advance', amount: 200000, method: 'cheque', date: '2026-06-15', desc: 'First installment' },
+    { project: projects[1], type: 'expense', amount: 25000, category: 'Survey Cost', method: 'bank_transfer', date: '2026-06-16', desc: 'Drone survey charges' },
+    { project: projects[3], type: 'advance', amount: 150000, method: 'bank_transfer', date: '2026-05-01', desc: 'Full payment received' },
+    { project: projects[3], type: 'expense', amount: 30000, category: 'Survey Cost', method: 'cash', date: '2026-05-05', desc: 'Drone rental and operator' },
+    { project: projects[3], type: 'expense', amount: 10000, category: 'Staff Cost', method: 'upi', date: '2026-05-10', desc: 'Data processing charges' },
+    { project: projects[3], type: 'expense', amount: 5000, category: 'Travel', method: 'cash', date: '2026-05-12', desc: 'Site travel expenses' },
+  ];
+
+  for (const p of paymentDefs) {
+    const categoryId = p.category ? expenses.find(e => e.name === p.category)?.id : null;
+    await supabase.from('payment_entries').insert({
+      organization_id: org.id,
+      project_id: p.project.id,
+      type: p.type,
+      amount: p.amount,
+      category_id: categoryId,
+      description: p.desc,
+      payment_method: p.method,
+      date: p.date,
+      created_by: users['rajesh@sathyananda.com'],
+    });
+  }
+  console.log(`   ✓ ${paymentDefs.length} payment entries`);
+
+  // 16. Closure Checklist Items
+  console.log('  Creating closure checklist...');
+  const checklistDefs = [
+    { title: 'Final report uploaded', display_order: 0 },
+    { title: 'All deliverables uploaded', display_order: 1 },
+    { title: 'All payments received', display_order: 2 },
+    { title: 'Client confirmed delivery', display_order: 3 },
+  ];
+
+  const { data: checklistItems } = await supabase
+    .from('closure_checklist_items')
+    .insert(checklistDefs.map(c => ({ ...c, organization_id: org.id })))
+    .select();
+  console.log(`   ✓ ${checklistItems.length} checklist items`);
+
   // Summary
   console.log('\n✅ Seed complete!\n');
   console.log('📋 Summary:');
@@ -293,6 +364,8 @@ async function seed() {
   console.log(`   Tasks: ${taskDefs.length}`);
   console.log(`   Notes: ${noteDefs.length}`);
   console.log(`   Attendance logs: ${attendanceDefs.length}`);
+  console.log(`   Quotes: ${quoteDefs.length}`);
+  console.log(`   Payment entries: ${paymentDefs.length}`);
   console.log('\n🔑 Login credentials:');
   for (const def of userDefs) {
     console.log(`   ${def.email} / ${TEST_PASSWORD} (${def.roles.join(', ')})`);

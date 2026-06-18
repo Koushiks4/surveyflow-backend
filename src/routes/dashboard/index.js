@@ -11,6 +11,12 @@ export default async function dashboardRoutes(fastify) {
     );
   });
 
+  fastify.get('/delivery-tracker', {
+    preHandler: [fastify.authorize(['super_admin', 'admin', 'team_lead'])],
+  }, async (request) => {
+    return dashboardService.getDeliveryTracker(request.organizationId);
+  });
+
   fastify.get('/recent-projects', async (request) => {
     return dashboardService.getRecentProjects(
       request.organizationId,

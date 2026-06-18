@@ -68,6 +68,8 @@ export class AuthService {
       { name: 'Pending', color: '#F59E0B', display_order: 0, is_default: true },
       { name: 'In Progress', color: '#3B82F6', display_order: 1 },
       { name: 'Completed', color: '#10B981', display_order: 2 },
+      { name: 'Delivered', color: '#8B5CF6', display_order: 3 },
+      { name: 'Closed', color: '#6B7280', display_order: 4 },
     ];
 
     const defaultTypes = [
@@ -91,6 +93,17 @@ export class AuthService {
     );
     await supabaseAdmin.from('expense_categories').insert(
       defaultExpenseCategories.map(c => ({ ...c, organization_id: organizationId }))
+    );
+
+    const defaultChecklistItems = [
+      { title: 'Final report uploaded', display_order: 0 },
+      { title: 'All deliverables uploaded', display_order: 1 },
+      { title: 'All payments received', display_order: 2 },
+      { title: 'Client confirmed delivery', display_order: 3 },
+    ];
+
+    await supabaseAdmin.from('closure_checklist_items').insert(
+      defaultChecklistItems.map(c => ({ ...c, organization_id: organizationId }))
     );
   }
 }

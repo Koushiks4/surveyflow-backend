@@ -85,6 +85,9 @@ export class ClientService {
   }
 
   async uploadDocument(organizationId, clientId, userId, file, category) {
+    if (/[^a-zA-Z0-9._-]/.test(file.filename)) {
+      throw new AppError(400, 'File name contains invalid characters. Please rename using only letters, numbers, dots, hyphens, and underscores.');
+    }
     const fileName = `${Date.now()}-${file.filename}`;
     const filePath = `${organizationId}/clients/${clientId}/${fileName}`;
 

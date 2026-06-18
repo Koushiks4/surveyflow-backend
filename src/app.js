@@ -15,6 +15,8 @@ import dashboardRoutes from './routes/dashboard/index.js';
 import attendanceRoutes from './routes/attendance/index.js';
 import taskRoutes from './routes/tasks/index.js';
 import noteRoutes from './routes/notes/index.js';
+import paymentRoutes from './routes/payments/index.js';
+import deliveryRoutes from './routes/delivery/index.js';
 
 export async function buildApp(opts = {}) {
   const app = Fastify({ logger: opts.logger ?? true, ...opts });
@@ -25,7 +27,10 @@ export async function buildApp(opts = {}) {
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   });
-  await app.register(multipart, { limits: { fileSize: 30 * 1024 * 1024 } });
+  await app.register(multipart, {
+    limits: { fileSize: 50 * 1024 * 1024, files: 1 },
+    attachFieldsToBody: false,
+  });
 
   app.setErrorHandler(errorHandler);
 
@@ -48,6 +53,8 @@ export async function buildApp(opts = {}) {
     await app.register(attendanceRoutes, { prefix: '/attendance' });
     await app.register(taskRoutes, { prefix: '/tasks' });
     await app.register(noteRoutes, { prefix: '/notes' });
+    await app.register(paymentRoutes, { prefix: '/payments' });
+    await app.register(deliveryRoutes, { prefix: '/delivery' });
   }, { prefix: '/api' });
 
   return app;

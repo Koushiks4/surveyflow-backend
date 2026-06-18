@@ -166,6 +166,9 @@ export class ProjectService {
   }
 
   async uploadDocument(organizationId, projectId, userId, file, category) {
+    if (/[^a-zA-Z0-9._-]/.test(file.filename)) {
+      throw new AppError(400, 'File name contains invalid characters. Please rename using only letters, numbers, dots, hyphens, and underscores.');
+    }
     const fileName = `${Date.now()}-${file.filename}`;
     const filePath = `${organizationId}/projects/${projectId}/${fileName}`;
 
@@ -193,5 +196,19 @@ export class ProjectService {
 
     if (error) throw new AppError(500, 'Failed to save document record');
     return data;
+  }
+
+  async deleteDocument(documentId, organizationId) {
+    const { data: doc } = await supabaseAdmin
+      .from('documents')
+      .select('file_path')
+      .eq('id', documentId)
+      .eq('organization_id', organizationId)
+      .single();
+
+    if (!doc) throw new AppError(404, 'Document not found');
+
+    await supabaseAdmin.storage.from('documents').remove([doc.file_path]);
+    await supabaseAdmin.from('documents').delete().eq('id', documentId);
   }
 }
