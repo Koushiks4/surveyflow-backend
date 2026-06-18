@@ -17,12 +17,13 @@ import taskRoutes from './routes/tasks/index.js';
 import noteRoutes from './routes/notes/index.js';
 import paymentRoutes from './routes/payments/index.js';
 import deliveryRoutes from './routes/delivery/index.js';
+import publicRoutes from './routes/public/index.js';
 
 export async function buildApp(opts = {}) {
   const app = Fastify({ logger: opts.logger ?? true, ...opts });
 
   await app.register(cors, {
-    origin: config.frontendUrl,
+    origin: true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -41,6 +42,7 @@ export async function buildApp(opts = {}) {
   await app.register(rbacPlugin);
 
   await app.register(authRoutes, { prefix: '/auth' });
+  await app.register(publicRoutes, { prefix: '/public' });
 
   await app.register(async function apiRoutes(app) {
     app.addHook('onRequest', app.authenticate);

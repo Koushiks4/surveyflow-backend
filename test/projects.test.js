@@ -26,12 +26,12 @@ describe('Project Management', () => {
     it('searches projects by title', async () => {
       const res = await app.inject({
         method: 'GET',
-        url: '/api/projects?search=Commercial',
+        url: '/api/projects?search=BDA',
         headers: authHeaders(adminToken),
       });
       expect(res.statusCode).toBe(200);
       expect(res.json().data.length).toBeGreaterThanOrEqual(1);
-      expect(res.json().data[0].title).toContain('Commercial');
+      expect(res.json().data[0].title).toContain('BDA');
     });
 
     it('filters projects by status', async () => {

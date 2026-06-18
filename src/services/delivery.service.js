@@ -1,7 +1,145 @@
+import crypto from 'crypto';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { AppError } from '../utils/errors.js';
 
 export class DeliveryService {
+  // Delivery link tokens
+  async generateLink(organizationId, projectId, userId) {
+    const { data: existing } = await supabaseAdmin
+      .from('project_delivery_tokens')
+      .select('id, token')
+      .eq('project_id', projectId)
+      .eq('organization_id', organizationId)
+      .single();
+
+    if (existing) return existing;
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const { data, error } = await supabaseAdmin
+      .from('project_delivery_tokens')
+      .insert({
+        organization_id: organizationId,
+        project_id: projectId,
+        token,
+        created_by: userId,
+      })
+      .select()
+      .single();
+
+    if (error) throw new AppError(500, 'Failed to generate delivery link');
+    return data;
+  }
+
+  async getLink(projectId, organizationId) {
+    const { data } = await supabaseAdmin
+      .from('project_delivery_tokens')
+      .select('token, created_at')
+      .eq('project_id', projectId)
+      .eq('organization_id', organizationId)
+      .single();
+
+    return data || null;
+  }
+
+  async getPublicDelivery(token) {
+    const { data: tokenData } = await supabaseAdmin
+      .from('project_delivery_tokens')
+      .select('project_id, organization_id, expires_at')
+      .eq('token', token)
+      .single();
+
+    if (!tokenData) throw new AppError(404, 'Invalid or expired delivery link');
+    if (tokenData.expires_at && new Date(tokenData.expires_at) < new Date()) {
+      throw new AppError(410, 'This delivery link has expired');
+    }
+
+    const { data: project } = await supabaseAdmin
+      .from('projects')
+      .select(`
+        id, project_number, title, description, start_date, expected_end_date,
+        delivery_confirmed_at, client_comment,
+        client:clients (name, email, mobile),
+        status:project_statuses (name, color),
+        project_type:project_types (name)
+      `)
+      .eq('id', tokenData.project_id)
+      .single();
+
+    if (!project) throw new AppError(404, 'Project not found');
+
+    const { data: deliverables } = await supabaseAdmin
+      .from('project_deliverables')
+      .select('id, file_name, file_size, file_type, description, created_at')
+      .eq('project_id', tokenData.project_id)
+      .eq('organization_id', tokenData.organization_id)
+      .order('created_at', { ascending: false });
+
+    const { data: team } = await supabaseAdmin
+      .from('project_assignments')
+      .select('user:profiles!project_assignments_user_id_fkey (full_name), role:roles (display_name)')
+      .eq('project_id', tokenData.project_id);
+
+    return {
+      project: {
+        project_number: project.project_number,
+        title: project.title,
+        description: project.description,
+        start_date: project.start_date,
+        expected_end_date: project.expected_end_date,
+        client: project.client,
+        status: project.status,
+        project_type: project.project_type,
+        delivery_confirmed: !!project.delivery_confirmed_at,
+        client_comment: project.client_comment,
+      },
+      deliverables: deliverables || [],
+      team: (team || []).map(t => ({ name: t.user?.full_name, role: t.role?.display_name })),
+    };
+  }
+
+  async getPublicDeliverableUrl(token, deliverableId) {
+    const { data: tokenData } = await supabaseAdmin
+      .from('project_delivery_tokens')
+      .select('project_id, organization_id')
+      .eq('token', token)
+      .single();
+
+    if (!tokenData) throw new AppError(404, 'Invalid delivery link');
+
+    const { data } = await supabaseAdmin
+      .from('project_deliverables')
+      .select('file_path')
+      .eq('id', deliverableId)
+      .eq('project_id', tokenData.project_id)
+      .single();
+
+    if (!data) throw new AppError(404, 'File not found');
+    const { data: signed } = await supabaseAdmin.storage.from('documents').createSignedUrl(data.file_path, 3600);
+    return { url: signed.signedUrl };
+  }
+
+  async confirmPublicDelivery(token, comment) {
+    const { data: tokenData } = await supabaseAdmin
+      .from('project_delivery_tokens')
+      .select('project_id, organization_id')
+      .eq('token', token)
+      .single();
+
+    if (!tokenData) throw new AppError(404, 'Invalid delivery link');
+
+    const { error } = await supabaseAdmin
+      .from('projects')
+      .update({
+        delivery_confirmed_at: new Date().toISOString(),
+        client_comment: comment || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', tokenData.project_id);
+
+    if (error) throw new AppError(500, 'Failed to confirm delivery');
+    return { ok: true };
+  }
+
   // Deliverables
   async listDeliverables(projectId, organizationId) {
     const { data, error } = await supabaseAdmin

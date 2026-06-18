@@ -66,6 +66,18 @@ export default async function deliveryRoutes(fastify) {
     return reply.status(200).send({ ok: true });
   });
 
+  // Delivery link
+  fastify.post('/project/:projectId/generate-link', {
+    preHandler: [fastify.authorize(canManage)],
+  }, async (request, reply) => {
+    const result = await deliveryService.generateLink(request.organizationId, request.params.projectId, request.user.id);
+    return reply.status(200).send(result);
+  });
+
+  fastify.get('/project/:projectId/link', async (request) => {
+    return deliveryService.getLink(request.params.projectId, request.organizationId);
+  });
+
   // Delivery confirmation
   fastify.get('/project/:projectId/status', async (request) => {
     return deliveryService.getDeliveryStatus(request.params.projectId, request.organizationId);
